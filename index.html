@@ -387,7 +387,10 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div class="card-title" style="margin-bottom:0">Filtr kwartalny</div>
-        <button id="btn-q-all" onclick="toggleAllQuarters()" style="font-family:'DM Mono',monospace;font-size:0.67rem;padding:3px 10px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg);color:var(--text-muted);cursor:pointer;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--accent)';this.style.color='white';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='var(--bg)';this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">zaznacz wszystkie</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="setAllQuarters(true)"  style="font-family:'DM Mono',monospace;font-size:0.67rem;padding:3px 10px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg);color:var(--text-muted);cursor:pointer;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--accent)';this.style.color='white';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='var(--bg)';this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">zaznacz wszystkie</button>
+          <button onclick="setAllQuarters(false)" style="font-family:'DM Mono',monospace;font-size:0.67rem;padding:3px 10px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg);color:var(--text-muted);cursor:pointer;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='var(--accent)';this.style.color='white';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='var(--bg)';this.style.color='var(--text-muted)';this.style.borderColor='var(--border)'">odznacz wszystkie</button>
+        </div>
       </div>
       <div class="toggle-group" id="q-toggles"></div>
     </div>
@@ -530,30 +533,18 @@ function rebuildQToggles() {
     container.appendChild(row);
     document.getElementById(`chk-q-${q}`).addEventListener('change', e => {
       showQ[q] = e.target.checked;
-      updateQAllBtn();
       refreshStats();
       draw();
     });
   });
-  updateQAllBtn();
 }
 
-// ── TOGGLE ALL QUARTERS ───────────────────────────────────────────────────
-function toggleAllQuarters() {
-  const qs = getAllQuarters();
-  const allOn = qs.every(q => showQ[q]);
-  qs.forEach(q => { showQ[q] = !allOn; });
+// ── SET ALL QUARTERS ──────────────────────────────────────────────────────
+function setAllQuarters(val) {
+  getAllQuarters().forEach(q => { showQ[q] = val; });
   rebuildQToggles();
   refreshStats();
   draw();
-}
-
-function updateQAllBtn() {
-  const btn = document.getElementById('btn-q-all');
-  if (!btn) return;
-  const qs = getAllQuarters();
-  const allOn = qs.every(q => showQ[q]);
-  btn.textContent = allOn ? 'odznacz wszystkie' : 'zaznacz wszystkie';
 }
 
 
