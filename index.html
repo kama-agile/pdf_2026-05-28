@@ -1,1 +1,718 @@
-Agata wymiata
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lead Times Dashboard 2024/25</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --surface2: #f0ede8;
+      --border: #e0dbd3;
+      --text: #1a1816;
+      --text-muted: #7a7570;
+      --accent: #1a1816;
+ 
+      --s-color: #2563eb;
+      --s-bg: #eff6ff;
+      --s-border: #bfdbfe;
+ 
+      --m-color: #d97706;
+      --m-bg: #fffbeb;
+      --m-border: #fde68a;
+ 
+      --l-color: #dc2626;
+      --l-bg: #fef2f2;
+      --l-border: #fecaca;
+ 
+      --p50: #6b7280;
+      --p85: #7c3aed;
+      --p95: #db2777;
+ 
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+    }
+ 
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 24px 64px;
+    }
+ 
+    header {
+      max-width: 1100px;
+      margin: 0 auto 36px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+ 
+    .header-left h1 {
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+ 
+    .header-left p {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+ 
+    .size-legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+ 
+    .legend-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px 6px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1.5px solid;
+      cursor: pointer;
+      transition: opacity 0.18s, transform 0.18s;
+      user-select: none;
+    }
+ 
+    .legend-pill:hover { transform: translateY(-1px); }
+    .legend-pill.dimmed { opacity: 0.35; }
+ 
+    .legend-pill.S { color: var(--s-color); background: var(--s-bg); border-color: var(--s-border); }
+    .legend-pill.M { color: var(--m-color); background: var(--m-bg); border-color: var(--m-border); }
+    .legend-pill.L { color: var(--l-color); background: var(--l-bg); border-color: var(--l-border); }
+ 
+    .dot-icon {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .S .dot-icon { background: var(--s-color); }
+    .M .dot-icon { background: var(--m-color); }
+    .L .dot-icon { background: var(--l-color); }
+ 
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+    }
+ 
+    @media (max-width: 800px) {
+      .main { grid-template-columns: 1fr; }
+    }
+ 
+    .card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+ 
+    .card-title {
+      font-size: 0.7rem;
+      font-family: 'DM Mono', monospace;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+ 
+    /* ── CHART ─────────────────────────── */
+    #chart-wrap {
+      position: relative;
+      width: 100%;
+    }
+ 
+    canvas#chart {
+      display: block;
+      width: 100%;
+    }
+ 
+    /* ── CONTROLS ─────────────────────── */
+    .controls-card {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+ 
+    .percentile-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+ 
+    .pct-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+ 
+    .pct-toggle {
+      width: 36px; height: 20px;
+      position: relative;
+      flex-shrink: 0;
+    }
+ 
+    .pct-toggle input { opacity: 0; width: 0; height: 0; }
+ 
+    .pct-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+ 
+    .pct-track::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: white;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+ 
+    .pct-toggle input:checked + .pct-track { background: var(--accent); }
+    .pct-toggle input:checked + .pct-track::after { transform: translateX(16px); }
+ 
+    .pct-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      flex: 1;
+    }
+ 
+    .pct-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1.5px solid;
+    }
+ 
+    .p50 .pct-label { color: var(--p50); }
+    .p50 .pct-badge { color: var(--p50); border-color: var(--p50); background: #f9fafb; }
+ 
+    .p85 .pct-label { color: var(--p85); }
+    .p85 .pct-badge { color: var(--p85); border-color: #c4b5fd; background: #f5f3ff; }
+ 
+    .p95 .pct-label { color: var(--p95); }
+    .p95 .pct-badge { color: var(--p95); border-color: #fbcfe8; background: #fdf2f8; }
+ 
+    /* Percentile stats table */
+    .stats-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+ 
+    .stats-size-header {
+      font-size: 0.65rem;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+ 
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+    }
+ 
+    .stat-cell {
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+    }
+ 
+    .stat-cell .val {
+      font-size: 1rem;
+      font-weight: 500;
+      display: block;
+    }
+ 
+    .stat-cell .lbl {
+      font-size: 0.6rem;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 2px;
+      display: block;
+    }
+ 
+    .stat-cell.p50 { background: #f9fafb; color: var(--p50); }
+    .stat-cell.p85 { background: #f5f3ff; color: var(--p85); }
+    .stat-cell.p95 { background: #fdf2f8; color: var(--p95); }
+ 
+    .size-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 2px;
+    }
+ 
+    .size-chip.S { color: var(--s-color); background: var(--s-bg); }
+    .size-chip.M { color: var(--m-color); background: var(--m-bg); }
+    .size-chip.L { color: var(--l-color); background: var(--l-bg); }
+ 
+    /* Tooltip */
+    #tooltip {
+      position: fixed;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      z-index: 100;
+      max-width: 180px;
+    }
+ 
+    #tooltip.visible { opacity: 1; }
+ 
+    #tooltip .tt-size {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+ 
+    #tooltip .tt-date { color: var(--text-muted); font-size: 0.7rem; }
+    #tooltip .tt-lead { font-size: 1rem; font-weight: 500; margin-top: 2px; }
+    #tooltip .tt-days { color: var(--text-muted); font-size: 0.65rem; }
+  </style>
+</head>
+<body>
+ 
+<header>
+  <div class="header-left">
+    <h1>Lead Times<br/>2024 / 25</h1>
+    <p>36 ukończonych elementów · lipiec 2024 – grudzień 2025</p>
+  </div>
+  <div class="size-legend" id="legend"></div>
+</header>
+ 
+<div class="main">
+  <div class="card">
+    <div class="card-title">Scatterplot — czas realizacji w czasie</div>
+    <div id="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+ 
+  <div class="card controls-card">
+    <div>
+      <div class="card-title">Percentyle</div>
+      <div class="percentile-group" id="pct-toggles"></div>
+    </div>
+ 
+    <div>
+      <div class="card-title">Wartości per rozmiar</div>
+      <div class="stats-block" id="stats"></div>
+    </div>
+  </div>
+</div>
+ 
+<div id="tooltip"></div>
+ 
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const RAW = [
+  {"date":"15 Lipca 2024","size":"S","leadTime":49},
+  {"date":"22 Sierpnia 2024","size":"S","leadTime":48},
+  {"date":"10 Września 2024","size":"S","leadTime":87},
+  {"date":"25 Września 2024","size":"M","leadTime":57},
+  {"date":"5 Października 2024","size":"M","leadTime":148},
+  {"date":"14 Października 2024","size":"S","leadTime":53},
+  {"date":"28 Października 2024","size":"S","leadTime":45},
+  {"date":"18 Listopada 2024","size":"M","leadTime":145},
+  {"date":"4 Grudnia 2024","size":"L","leadTime":105},
+  {"date":"8 Stycznia 2025","size":"S","leadTime":5},
+  {"date":"20 Stycznia 2025","size":"L","leadTime":163},
+  {"date":"14 Lutego 2025","size":"S","leadTime":43},
+  {"date":"26 Lutego 2025","size":"M","leadTime":415},
+  {"date":"15 Marca 2025","size":"L","leadTime":123},
+  {"date":"10 Kwietnia 2025","size":"M","leadTime":103},
+  {"date":"5 Maja 2025","size":"L","leadTime":104},
+  {"date":"12 Czerwca 2025","size":"L","leadTime":302},
+  {"date":"25 Czerwca 2025","size":"L","leadTime":158},
+  {"date":"2 Lipca 2025","size":"L","leadTime":98},
+  {"date":"11 Lipca 2025","size":"S","leadTime":52},
+  {"date":"18 Lipca 2025","size":"M","leadTime":95},
+  {"date":"29 Lipca 2025","size":"S","leadTime":70},
+  {"date":"3 Sierpnia 2025","size":"M","leadTime":95},
+  {"date":"14 Sierpnia 2025","size":"M","leadTime":101},
+  {"date":"21 Sierpnia 2025","size":"M","leadTime":57},
+  {"date":"29 Sierpnia 2025","size":"M","leadTime":57},
+  {"date":"8 Września 2025","size":"S","leadTime":53},
+  {"date":"22 Września 2025","size":"L","leadTime":137},
+  {"date":"4 Października 2025","size":"S","leadTime":73},
+  {"date":"12 Października 2025","size":"M","leadTime":60},
+  {"date":"19 Października 2025","size":"S","leadTime":126},
+  {"date":"27 Października 2025","size":"M","leadTime":57},
+  {"date":"5 Listopada 2025","size":"L","leadTime":124},
+  {"date":"15 Listopada 2025","size":"M","leadTime":75},
+  {"date":"25 Listopada 2025","size":"M","leadTime":89},
+  {"date":"10 Grudnia 2025","size":"S","leadTime":44}
+];
+ 
+// ── HELPERS ───────────────────────────────────────────────────────────────
+const SIZE_META = {
+  S: { label: 'Small (S)', color: '#2563eb', fill: 'rgba(37,99,235,0.18)', r: 7 },
+  M: { label: 'Medium (M)', color: '#d97706', fill: 'rgba(217,119,6,0.18)', r: 8 },
+  L: { label: 'Large (L)', color: '#dc2626', fill: 'rgba(220,38,38,0.18)', r: 9 }
+};
+ 
+const PCT_META = {
+  p50: { label: 'P50 (mediana)', color: '#6b7280', dash: [6,4] },
+  p85: { label: 'P85', color: '#7c3aed', dash: [10,4] },
+  p95: { label: 'P95', color: '#db2777', dash: [3,3] }
+};
+ 
+function parseDate(str) {
+  const months = {
+    'Stycznia':0,'Lutego':1,'Marca':2,'Kwietnia':3,'Maja':4,'Czerwca':5,
+    'Lipca':6,'Sierpnia':7,'Września':8,'Października':9,'Listopada':10,'Grudnia':11
+  };
+  const [d, m, y] = str.split(' ');
+  return new Date(+y, months[m], +d);
+}
+ 
+function percentile(arr, p) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  return lo === hi ? sorted[lo] : sorted[lo] + (idx - lo) * (sorted[hi] - sorted[lo]);
+}
+ 
+// Parse dates
+const data = RAW.map(d => ({ ...d, ts: parseDate(d.date).getTime() }));
+data.sort((a, b) => a.ts - b.ts);
+ 
+const sizes = ['S', 'M', 'L'];
+const pctKeys = ['p50', 'p85', 'p95'];
+const pctVals = { p50: 50, p85: 85, p95: 95 };
+ 
+// Compute percentiles per size
+const stats = {};
+sizes.forEach(s => {
+  const vals = data.filter(d => d.size === s).map(d => d.leadTime);
+  stats[s] = {
+    p50: Math.round(percentile(vals, 50)),
+    p85: Math.round(percentile(vals, 85)),
+    p95: Math.round(percentile(vals, 95)),
+    count: vals.length
+  };
+});
+ 
+// ── STATE ─────────────────────────────────────────────────────────────────
+const visible = { S: true, M: true, L: true };
+const showPct = { p50: true, p85: true, p95: true };
+ 
+// ── LEGEND PILLS ─────────────────────────────────────────────────────────
+const legendEl = document.getElementById('legend');
+sizes.forEach(s => {
+  const pill = document.createElement('div');
+  pill.className = `legend-pill ${s}`;
+  pill.id = `pill-${s}`;
+  pill.innerHTML = `<span class="dot-icon"></span>${SIZE_META[s].label} <span style="font-family:'DM Mono',monospace;font-size:0.7rem;opacity:0.7">(n=${stats[s].count})</span>`;
+  pill.addEventListener('click', () => {
+    visible[s] = !visible[s];
+    pill.classList.toggle('dimmed', !visible[s]);
+    draw();
+  });
+  legendEl.appendChild(pill);
+});
+ 
+// ── PERCENTILE TOGGLES ────────────────────────────────────────────────────
+const pctContainer = document.getElementById('pct-toggles');
+pctKeys.forEach(pk => {
+  const row = document.createElement('div');
+  row.className = `pct-row ${pk}`;
+  row.innerHTML = `
+    <label class="pct-toggle">
+      <input type="checkbox" id="chk-${pk}" checked />
+      <span class="pct-track"></span>
+    </label>
+    <span class="pct-label">P${pctVals[pk]}${pk === 'p50' ? ' (mediana)' : ''}</span>
+  `;
+  document.getElementById(`chk-${pk}`)?.addEventListener?.('change', () => {});
+  pctContainer.appendChild(row);
+ 
+  document.getElementById(`chk-${pk}`).addEventListener('change', e => {
+    showPct[pk] = e.target.checked;
+    updateStatsBadges();
+    draw();
+  });
+});
+ 
+// ── STATS TABLE ───────────────────────────────────────────────────────────
+function buildStats() {
+  const el = document.getElementById('stats');
+  el.innerHTML = '';
+  sizes.forEach(s => {
+    const header = document.createElement('div');
+    header.className = 'stats-size-header';
+    header.innerHTML = `<span class="size-chip ${s}"><span style="width:6px;height:6px;border-radius:50%;background:${SIZE_META[s].color};display:inline-block"></span>${SIZE_META[s].label}</span> — ${stats[s].count} elem.`;
+    el.appendChild(header);
+ 
+    const row = document.createElement('div');
+    row.className = 'stats-row';
+    pctKeys.forEach(pk => {
+      const cell = document.createElement('div');
+      cell.className = `stat-cell ${pk}`;
+      cell.id = `stat-${s}-${pk}`;
+      cell.innerHTML = `<span class="val">${stats[s][pk]}</span><span class="lbl">P${pctVals[pk]} dni</span>`;
+      row.appendChild(cell);
+    });
+    el.appendChild(row);
+  });
+}
+ 
+function updateStatsBadges() {
+  pctKeys.forEach(pk => {
+    sizes.forEach(s => {
+      const cell = document.getElementById(`stat-${s}-${pk}`);
+      if (cell) cell.style.opacity = showPct[pk] ? '1' : '0.3';
+    });
+  });
+}
+ 
+buildStats();
+ 
+// ── CANVAS CHART ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+let DPR = window.devicePixelRatio || 1;
+ 
+const PAD = { top: 20, right: 20, bottom: 56, left: 56 };
+let W, H, CW, CH;
+let xMin, xMax, yMin, yMax;
+let hitTargets = [];
+ 
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width;
+  H = Math.max(340, Math.min(480, rect.width * 0.55));
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  CW = W - PAD.left - PAD.right;
+  CH = H - PAD.top - PAD.bottom;
+  draw();
+}
+ 
+function xScale(ts) {
+  return PAD.left + (ts - xMin) / (xMax - xMin) * CW;
+}
+ 
+function yScale(v) {
+  return PAD.top + CH - (v - yMin) / (yMax - yMin) * CH;
+}
+ 
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  hitTargets = [];
+ 
+  const allTs = data.map(d => d.ts);
+  xMin = Math.min(...allTs) - 15 * 86400000;
+  xMax = Math.max(...allTs) + 15 * 86400000;
+  yMin = 0;
+  yMax = Math.max(...data.map(d => d.leadTime)) * 1.08;
+ 
+  // Grid
+  ctx.strokeStyle = '#e5e1db';
+  ctx.lineWidth = 1;
+  const yTicks = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450].filter(v => v <= yMax + 30);
+  yTicks.forEach(v => {
+    const y = Math.round(yScale(v)) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y);
+    ctx.lineTo(W - PAD.right, y);
+    ctx.stroke();
+ 
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = `500 11px 'DM Mono', monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillText(v, PAD.left - 8, y + 4);
+  });
+ 
+  // X axis ticks — months
+  const d0 = new Date(xMin), d1 = new Date(xMax);
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = `500 10px 'DM Mono', monospace`;
+  ctx.textAlign = 'center';
+ 
+  const MONTHS_PL = ['sty','lut','mar','kwi','maj','cze','lip','sie','wrz','paź','lis','gru'];
+  let cur = new Date(d0.getFullYear(), d0.getMonth(), 1);
+  while (cur <= d1) {
+    const x = xScale(cur.getTime());
+    if (x >= PAD.left && x <= W - PAD.right) {
+      ctx.fillText(MONTHS_PL[cur.getMonth()] + ' ' + String(cur.getFullYear()).slice(2), x, H - PAD.bottom + 18);
+      ctx.strokeStyle = '#f0ece7';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x) + 0.5, PAD.top);
+      ctx.lineTo(Math.round(x) + 0.5, H - PAD.bottom);
+      ctx.stroke();
+    }
+    cur.setMonth(cur.getMonth() + 1);
+  }
+ 
+  // Axes
+  ctx.strokeStyle = '#c9c4be';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, H - PAD.bottom);
+  ctx.lineTo(W - PAD.right, H - PAD.bottom);
+  ctx.stroke();
+ 
+  // Y axis label
+  ctx.save();
+  ctx.translate(14, PAD.top + CH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = `500 10px 'DM Mono', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('CZAS REALIZACJI (dni)', 0, 0);
+  ctx.restore();
+ 
+  // Percentile lines per size
+  sizes.forEach(s => {
+    if (!visible[s]) return;
+    const sizeData = data.filter(d => d.size === s);
+    if (!sizeData.length) return;
+    const xs = sizeData.map(d => d.ts);
+    const xLeft = Math.min(...xs) - 5 * 86400000;
+    const xRight = Math.max(...xs) + 5 * 86400000;
+ 
+    pctKeys.forEach(pk => {
+      if (!showPct[pk]) return;
+      const val = stats[s][pk];
+      const y = yScale(val);
+      const color = PCT_META[pk].color;
+      const dash = PCT_META[pk].dash;
+ 
+      ctx.save();
+      ctx.setLineDash(dash);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(xScale(xLeft), y);
+      ctx.lineTo(xScale(xRight), y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+ 
+      // Label
+      const lx = xScale(xRight) + 4;
+      if (lx < W - 2) {
+        ctx.fillStyle = color;
+        ctx.font = `600 9px 'DM Mono', monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillText(`P${pctVals[pk]}${s}=${val}`, lx, y + 3.5);
+      }
+      ctx.restore();
+    });
+  });
+ 
+  // Dots
+  data.forEach(d => {
+    if (!visible[d.size]) return;
+    const meta = SIZE_META[d.size];
+    const x = xScale(d.ts);
+    const y = yScale(d.leadTime);
+    const r = meta.r;
+ 
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = meta.fill;
+    ctx.fill();
+    ctx.strokeStyle = meta.color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+ 
+    hitTargets.push({ x, y, r: r + 6, data: d });
+  });
+}
+ 
+// ── TOOLTIP ───────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+ 
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const hit = hitTargets.find(t => Math.hypot(mx - t.x, my - t.y) < t.r);
+ 
+  if (hit) {
+    const d = hit.data;
+    const meta = SIZE_META[d.size];
+    tooltip.innerHTML = `
+      <div class="tt-size" style="color:${meta.color}">${meta.label}</div>
+      <div class="tt-date">${d.date}</div>
+      <div class="tt-lead" style="color:${meta.color}">${d.leadTime}</div>
+      <div class="tt-days">dni realizacji</div>
+    `;
+    tooltip.classList.add('visible');
+    let tx = e.clientX + 14, ty = e.clientY - 10;
+    if (tx + 180 > window.innerWidth) tx = e.clientX - 194;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top = ty + 'px';
+    canvas.style.cursor = 'pointer';
+  } else {
+    tooltip.classList.remove('visible');
+    canvas.style.cursor = 'default';
+  }
+});
+ 
+canvas.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+ 
+// ── INIT ──────────────────────────────────────────────────────────────────
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>
+ 
