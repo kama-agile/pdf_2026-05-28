@@ -337,18 +337,125 @@
       margin-top: -8px;
       margin-bottom: 4px;
     }
+
+    /* ── TABS ────────────────────────────── */
+    .tabs-bar {
+      max-width: 1160px;
+      margin: 0 auto 20px;
+      display: flex;
+      gap: 4px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0;
+    }
+
+    .tab-btn {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      padding: 8px 20px 10px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── XMR ──────────────────────────────── */
+    .xmr-layout {
+      max-width: 1160px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .xmr-stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 700px) { .xmr-stats-row { grid-template-columns: repeat(2,1fr); } }
+
+    .xmr-stat {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      box-shadow: var(--shadow);
+    }
+    .xmr-stat .xs-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .xmr-stat .xs-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.35rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .xmr-stat.unpl .xs-val { color: #dc2626; }
+    .xmr-stat.lnpl .xs-val { color: #2563eb; }
+
+    .xmr-legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 2px;
+    }
+    .xmr-leg-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .xmr-leg-line {
+      width: 24px;
+      height: 2px;
+      border-radius: 2px;
+    }
+    .xmr-leg-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 2px solid;
+    }
+
+    canvas.xmr-canvas { display: block; width: 100%; }
   </style>
 </head>
 <body>
 
 <header>
   <div class="header-left">
-    <h1>Lead Times<br/>2024 / 25</h1>
-    <p id="header-sub">36 elementów · lipiec 2024 – grudzień 2025</p>
+    <h1>Flow Metrics<br/>Dashboard</h1>
+    <p id="header-sub">Lead Times 2024/25 · Throughput Daily 2025</p>
   </div>
   <div class="size-legend" id="legend"></div>
 </header>
 
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('scatter')">📍 Lead Times — Scatter</button>
+  <button class="tab-btn" onclick="switchTab('xmr')">📊 Throughput — XmR</button>
+</div>
+
+<!-- TAB: SCATTER -->
+<div id="tab-scatter" class="tab-panel active">
 <div class="main">
   <!-- LEFT: chart + add row -->
   <div class="left-col">
@@ -402,6 +509,62 @@
     </div>
   </div>
 </div>
+</div><!-- /tab-scatter -->
+
+<!-- TAB: XMR -->
+<div id="tab-xmr" class="tab-panel">
+<div class="xmr-layout">
+
+  <!-- KPI row -->
+  <div class="xmr-stats-row">
+    <div class="xmr-stat">
+      <div class="xs-label">Średnia (x̄)</div>
+      <div class="xs-val" id="xmr-avg">—</div>
+    </div>
+    <div class="xmr-stat">
+      <div class="xs-label">Średni MR (mR̄)</div>
+      <div class="xs-val" id="xmr-avgmr">—</div>
+    </div>
+    <div class="xmr-stat unpl">
+      <div class="xs-label">UNPL (+2,66 × mR̄)</div>
+      <div class="xs-val" id="xmr-unpl">—</div>
+    </div>
+    <div class="xmr-stat lnpl">
+      <div class="xs-label">LNPL (−2,66 × mR̄)</div>
+      <div class="xs-val" id="xmr-lnpl">—</div>
+    </div>
+  </div>
+
+  <!-- X chart -->
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:0">Wykres X — przepustowość dzienna</div>
+      <div class="xmr-legend">
+        <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#1a1816"></div>Przepustowość</div>
+        <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#6b7280;border-top:2px dashed #6b7280;background:none;width:24px;height:0;border-bottom:none;border-left:none;border-right:none"></div>Średnia</div>
+        <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#dc2626"></div>UNPL</div>
+        <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#2563eb"></div>LNPL</div>
+        <div class="xmr-leg-item"><div class="xmr-leg-dot" style="background:#dc262622;border-color:#dc2626"></div>Sygnał</div>
+      </div>
+    </div>
+    <canvas id="xmr-x-canvas" class="xmr-canvas"></canvas>
+  </div>
+
+  <!-- MR chart -->
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:0">Wykres mR — zakres ruchomy</div>
+      <div class="xmr-legend">
+        <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#7c3aed"></div>mR</div>
+        <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#6b7280;border-top:2px dashed #6b7280;background:none;width:24px;height:0;border-bottom:none;border-left:none;border-right:none"></div>Średni mR</div>
+        <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#d97706"></div>UCL (3,267 × mR̄)</div>
+      </div>
+    </div>
+    <canvas id="xmr-mr-canvas" class="xmr-canvas"></canvas>
+  </div>
+
+</div>
+</div><!-- /tab-xmr -->
 
 <div id="tooltip"></div>
 
@@ -913,6 +1076,255 @@ rebuildQToggles();
 refreshStats();
 window.addEventListener('resize', resize);
 resize();
+
+// ── TABS ──────────────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.getAttribute('onclick').includes("'" + id + "'")) b.classList.add('active');
+  });
+  if (id === 'xmr') {
+    requestAnimationFrame(() => { xmrResize(); });
+  }
+  // hide size legend on XmR tab (not relevant)
+  document.getElementById('legend').style.visibility = id === 'scatter' ? 'visible' : 'hidden';
+}
+
+// ── XMR DATA ──────────────────────────────────────────────────────────────
+const XMR_DATES = ["2025-01-07","2025-01-08","2025-01-09","2025-01-10","2025-01-11","2025-01-12","2025-01-13","2025-01-14","2025-01-15","2025-01-16","2025-01-17","2025-01-18","2025-01-19","2025-01-20","2025-01-21","2025-01-22","2025-01-23","2025-01-24","2025-01-25","2025-01-26","2025-01-27","2025-01-28","2025-01-29","2025-01-30","2025-01-31","2025-02-01","2025-02-02","2025-02-03","2025-02-04","2025-02-05","2025-02-06","2025-02-07","2025-02-08","2025-02-09","2025-02-10","2025-02-11","2025-02-12","2025-02-13","2025-02-14","2025-02-15","2025-02-16","2025-02-17","2025-02-18","2025-02-19","2025-02-20","2025-02-21","2025-02-22","2025-02-23","2025-02-24","2025-02-25","2025-02-26","2025-02-27","2025-02-28","2025-03-01","2025-03-02","2025-03-03","2025-03-04","2025-03-05","2025-03-06","2025-03-07","2025-03-08","2025-03-09","2025-03-10","2025-03-11","2025-03-12","2025-03-13","2025-03-14","2025-03-15","2025-03-16","2025-03-17","2025-03-18","2025-03-19","2025-03-20","2025-03-21","2025-03-22","2025-03-23","2025-03-24","2025-03-25","2025-03-26","2025-03-27","2025-03-28","2025-03-29","2025-03-30","2025-03-31","2025-04-01","2025-04-02","2025-04-03","2025-04-04","2025-04-05","2025-04-06","2025-04-07","2025-04-08","2025-04-09","2025-04-10","2025-04-11","2025-04-12","2025-04-13","2025-04-14","2025-04-15","2025-04-16","2025-04-17","2025-04-18","2025-04-19"];
+const XMR_VALS = [0,2,10,3,0,0,2,3,7,0,0,0,0,5,2,0,0,0,0,0,1,1,0,5,4,0,0,7,0,2,2,12,0,0,1,0,0,2,12,0,0,1,0,0,3,11,0,0,6,0,0,6,7,0,0,2,0,0,3,5,0,0,1,0,0,9,7,0,0,3,0,0,4,10,0,0,1,0,0,5,1,0,0,2,0,0,2,11,0,0,1,0,0,5,2,0,0,1,0,0,4,7,0];
+
+// Compute XmR stats
+const XMR_N    = XMR_VALS.length;
+const XMR_AVG  = XMR_VALS.reduce((a,b) => a+b, 0) / XMR_N;
+const XMR_MRS  = [null, ...XMR_VALS.slice(1).map((v,i) => Math.abs(v - XMR_VALS[i]))];
+const XMR_AVGMR = XMR_MRS.slice(1).reduce((a,b) => a+b, 0) / (XMR_N - 1);
+const XMR_UNPL  = XMR_AVG + 2.66 * XMR_AVGMR;
+const XMR_LNPL  = XMR_AVG - 2.66 * XMR_AVGMR;
+const XMR_MRUCL = 3.267 * XMR_AVGMR;
+
+// Populate KPI cards
+document.getElementById('xmr-avg').textContent   = XMR_AVG.toFixed(2);
+document.getElementById('xmr-avgmr').textContent = XMR_AVGMR.toFixed(2);
+document.getElementById('xmr-unpl').textContent  = XMR_UNPL.toFixed(2);
+document.getElementById('xmr-lnpl').textContent  = XMR_LNPL.toFixed(2);
+
+// ── XMR CHART DRAWING ─────────────────────────────────────────────────────
+const xCvs  = document.getElementById('xmr-x-canvas');
+const xCtx  = xCvs.getContext('2d');
+const mrCvs = document.getElementById('xmr-mr-canvas');
+const mrCtx = mrCvs.getContext('2d');
+
+const XPAD = { top:16, right:20, bottom:42, left:44 };
+
+function xmrResize() {
+  [xCvs, mrCvs].forEach((c, ci) => {
+    const dpr = window.devicePixelRatio || 1;
+    const w = c.parentElement.getBoundingClientRect().width - 44; // card padding
+    const h = ci === 0 ? Math.max(200, Math.min(300, w * 0.32)) : Math.max(140, Math.min(200, w * 0.22));
+    c.style.width  = w + 'px';
+    c.style.height = h + 'px';
+    c.width  = w * dpr;
+    c.height = h * dpr;
+    c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+  });
+  drawXChart();
+  drawMRChart();
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return MONTHS_SHORT[d.getMonth()] + " '" + String(d.getFullYear()).slice(2);
+}
+
+function drawXmrBase(c, ctx, yMin, yMax) {
+  const W = parseFloat(c.style.width);
+  const H = parseFloat(c.style.height);
+  const CW = W - XPAD.left - XPAD.right;
+  const CH = H - XPAD.top  - XPAD.bottom;
+  ctx.clearRect(0, 0, W, H);
+
+  const xS = i => XPAD.left + (i / (XMR_N - 1)) * CW;
+  const yS = v => XPAD.top + CH - ((v - yMin) / (yMax - yMin)) * CH;
+
+  // Y grid + ticks
+  const yRange = yMax - yMin;
+  const rawStep = yRange / 5;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const step = Math.ceil(rawStep / mag) * mag || 1;
+  ctx.strokeStyle = '#e8e4de'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#a0a0a0'; ctx.font = `500 10px 'DM Mono', monospace`; ctx.textAlign = 'right';
+  for (let v = Math.ceil(yMin / step) * step; v <= yMax + 0.01; v += step) {
+    const y = Math.round(yS(v)) + 0.5;
+    ctx.beginPath(); ctx.moveTo(XPAD.left, y); ctx.lineTo(W - XPAD.right, y); ctx.stroke();
+    ctx.fillText(Number(v.toFixed(1)), XPAD.left - 5, y + 3.5);
+  }
+
+  // X ticks — one per month
+  let lastMonth = null;
+  ctx.fillStyle = '#a0a0a0'; ctx.font = `500 9px 'DM Mono', monospace`; ctx.textAlign = 'center';
+  XMR_DATES.forEach((d, i) => {
+    const mo = d.slice(0, 7);
+    if (mo !== lastMonth) {
+      lastMonth = mo;
+      const x = xS(i);
+      ctx.strokeStyle = '#f0ece6'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(Math.round(x)+.5, XPAD.top); ctx.lineTo(Math.round(x)+.5, H - XPAD.bottom); ctx.stroke();
+      ctx.fillStyle = '#a0a0a0';
+      ctx.fillText(fmtDate(d), x, H - XPAD.bottom + 13);
+    }
+  });
+
+  // Axes
+  ctx.strokeStyle = '#c8c3bc'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(XPAD.left, XPAD.top);
+  ctx.lineTo(XPAD.left, H - XPAD.bottom);
+  ctx.lineTo(W - XPAD.right, H - XPAD.bottom);
+  ctx.stroke();
+
+  return { W, H, CW, CH, xS, yS };
+}
+
+function drawXChart() {
+  const yPad  = Math.max(1, XMR_UNPL * 0.08);
+  const yMin  = Math.min(0, XMR_LNPL - yPad);
+  const yMax  = XMR_UNPL + yPad;
+  const { W, H, xS, yS } = drawXmrBase(xCvs, xCtx, yMin, yMax);
+
+  // LNPL line
+  if (XMR_LNPL > yMin) {
+    xCtx.strokeStyle = '#2563eb'; xCtx.lineWidth = 1.5; xCtx.setLineDash([]);
+    xCtx.beginPath(); xCtx.moveTo(XPAD.left, yS(XMR_LNPL)); xCtx.lineTo(W - XPAD.right, yS(XMR_LNPL)); xCtx.stroke();
+    xCtx.fillStyle = '#2563eb'; xCtx.font = `500 8.5px 'DM Mono', monospace`; xCtx.textAlign = 'left';
+    xCtx.fillText(`LNPL ${XMR_LNPL.toFixed(2)}`, XPAD.left + 4, yS(XMR_LNPL) - 4);
+  }
+
+  // UNPL line
+  xCtx.strokeStyle = '#dc2626'; xCtx.lineWidth = 1.5; xCtx.setLineDash([]);
+  xCtx.beginPath(); xCtx.moveTo(XPAD.left, yS(XMR_UNPL)); xCtx.lineTo(W - XPAD.right, yS(XMR_UNPL)); xCtx.stroke();
+  xCtx.fillStyle = '#dc2626'; xCtx.font = `500 8.5px 'DM Mono', monospace`; xCtx.textAlign = 'left';
+  xCtx.fillText(`UNPL ${XMR_UNPL.toFixed(2)}`, XPAD.left + 4, yS(XMR_UNPL) - 4);
+
+  // Mean line (dashed)
+  xCtx.strokeStyle = '#6b7280'; xCtx.lineWidth = 1.5; xCtx.setLineDash([6, 4]);
+  xCtx.beginPath(); xCtx.moveTo(XPAD.left, yS(XMR_AVG)); xCtx.lineTo(W - XPAD.right, yS(XMR_AVG)); xCtx.stroke();
+  xCtx.setLineDash([]);
+  xCtx.fillStyle = '#6b7280'; xCtx.font = `500 8.5px 'DM Mono', monospace`; xCtx.textAlign = 'left';
+  xCtx.fillText(`x̄ ${XMR_AVG.toFixed(2)}`, XPAD.left + 4, yS(XMR_AVG) - 4);
+
+  // Area fill between LNPL and UNPL
+  xCtx.globalAlpha = 0.04;
+  xCtx.fillStyle = '#6b7280';
+  const top = yS(XMR_UNPL), bot = Math.min(yS(Math.max(XMR_LNPL, 0)), parseFloat(xCvs.style.height) - XPAD.bottom);
+  xCtx.fillRect(XPAD.left, top, W - XPAD.left - XPAD.right, bot - top);
+  xCtx.globalAlpha = 1;
+
+  // Line connecting points
+  xCtx.strokeStyle = '#1a1816'; xCtx.lineWidth = 1.5;
+  xCtx.beginPath();
+  XMR_VALS.forEach((v, i) => {
+    const x = xS(i), y = yS(v);
+    i === 0 ? xCtx.moveTo(x, y) : xCtx.lineTo(x, y);
+  });
+  xCtx.stroke();
+
+  // Dots — signal highlighted
+  XMR_VALS.forEach((v, i) => {
+    const x = xS(i), y = yS(v);
+    const signal = v > XMR_UNPL || v < XMR_LNPL;
+    xCtx.beginPath(); xCtx.arc(x, y, signal ? 5 : 3, 0, Math.PI * 2);
+    if (signal) {
+      xCtx.fillStyle = 'rgba(220,38,38,0.15)'; xCtx.fill();
+      xCtx.strokeStyle = '#dc2626'; xCtx.lineWidth = 2;
+    } else {
+      xCtx.fillStyle = '#ffffff'; xCtx.fill();
+      xCtx.strokeStyle = '#1a1816'; xCtx.lineWidth = 1.5;
+    }
+    xCtx.stroke();
+  });
+}
+
+function drawMRChart() {
+  const mrVals = XMR_MRS.slice(1);
+  const yMax   = Math.max(XMR_MRUCL, Math.max(...mrVals)) * 1.1;
+  const { W, H, xS, yS } = drawXmrBase(mrCvs, mrCtx, 0, yMax);
+
+  // UCL line
+  mrCtx.strokeStyle = '#d97706'; mrCtx.lineWidth = 1.5; mrCtx.setLineDash([]);
+  mrCtx.beginPath(); mrCtx.moveTo(XPAD.left, yS(XMR_MRUCL)); mrCtx.lineTo(W - XPAD.right, yS(XMR_MRUCL)); mrCtx.stroke();
+  mrCtx.fillStyle = '#d97706'; mrCtx.font = `500 8.5px 'DM Mono', monospace`; mrCtx.textAlign = 'left';
+  mrCtx.fillText(`UCL ${XMR_MRUCL.toFixed(2)}`, XPAD.left + 4, yS(XMR_MRUCL) - 4);
+
+  // Avg MR line (dashed)
+  mrCtx.strokeStyle = '#6b7280'; mrCtx.lineWidth = 1.5; mrCtx.setLineDash([6, 4]);
+  mrCtx.beginPath(); mrCtx.moveTo(XPAD.left, yS(XMR_AVGMR)); mrCtx.lineTo(W - XPAD.right, yS(XMR_AVGMR)); mrCtx.stroke();
+  mrCtx.setLineDash([]);
+  mrCtx.fillStyle = '#6b7280'; mrCtx.font = `500 8.5px 'DM Mono', monospace`; mrCtx.textAlign = 'left';
+  mrCtx.fillText(`mR̄ ${XMR_AVGMR.toFixed(2)}`, XPAD.left + 4, yS(XMR_AVGMR) - 4);
+
+  // Line connecting MR points (starting at index 1)
+  mrCtx.strokeStyle = '#7c3aed'; mrCtx.lineWidth = 1.5;
+  mrCtx.beginPath();
+  mrVals.forEach((v, i) => {
+    const x = xS(i + 1), y = yS(v);
+    i === 0 ? mrCtx.moveTo(x, y) : mrCtx.lineTo(x, y);
+  });
+  mrCtx.stroke();
+
+  // Dots
+  mrVals.forEach((v, i) => {
+    const x = xS(i + 1), y = yS(v);
+    const signal = v > XMR_MRUCL;
+    mrCtx.beginPath(); mrCtx.arc(x, y, signal ? 5 : 3, 0, Math.PI * 2);
+    if (signal) {
+      mrCtx.fillStyle = 'rgba(217,119,6,0.15)'; mrCtx.fill();
+      mrCtx.strokeStyle = '#d97706'; mrCtx.lineWidth = 2;
+    } else {
+      mrCtx.fillStyle = '#ffffff'; mrCtx.fill();
+      mrCtx.strokeStyle = '#7c3aed'; mrCtx.lineWidth = 1.5;
+    }
+    mrCtx.stroke();
+  });
+}
+
+// Tooltip for XmR charts
+const xmrTip = document.getElementById('tooltip');
+function xmrTooltip(canvas, ctx, drawFn, vals, isX) {
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const W = parseFloat(canvas.style.width);
+    const CW = W - XPAD.left - XPAD.right;
+    const rawI = ((mx - XPAD.left) / CW) * (XMR_N - 1);
+    const i = Math.round(rawI);
+    if (i < 0 || i >= vals.length || vals[i] == null) {
+      xmrTip.classList.remove('visible'); return;
+    }
+    const val = vals[i];
+    const signal = isX ? (val > XMR_UNPL || val < XMR_LNPL) : (val > XMR_MRUCL);
+    xmrTip.innerHTML = `
+      <div class="tt-size" style="color:${signal ? '#dc2626' : 'var(--text-muted)'}">
+        ${isX ? 'Przepustowość' : 'Moving Range'}${signal ? ' ⚠ sygnał' : ''}
+      </div>
+      <div class="tt-date">${XMR_DATES[i]}</div>
+      <div class="tt-lead" style="color:${signal ? '#dc2626' : 'var(--text)'}">${val}</div>
+      <div class="tt-days">${isX ? 'elem./dzień' : 'mR'}</div>
+    `;
+    xmrTip.classList.add('visible');
+    let tx = e.clientX + 14, ty = e.clientY - 10;
+    if (tx + 200 > window.innerWidth) tx = e.clientX - 210;
+    xmrTip.style.left = tx + 'px'; xmrTip.style.top = ty + 'px';
+  });
+  canvas.addEventListener('mouseleave', () => xmrTip.classList.remove('visible'));
+}
+
+xmrTooltip(xCvs,  xCtx,  drawXChart,  XMR_VALS,        true);
+xmrTooltip(mrCvs, mrCtx, drawMRChart, XMR_MRS.map((v,i) => i===0 ? null : v), false);
+
+window.addEventListener('resize', () => { if (document.getElementById('tab-xmr').classList.contains('active')) xmrResize(); });
 </script>
 </body>
 </html>
