@@ -1,1 +1,569 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monte Carlo Forecast</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
+  :root {
+    --bg: #0c1222; --card: #141e33; --border: #1e2d4a;
+    --accent: #38bdf8; --green: #34d399; --amber: #fbbf24;
+    --red: #f87171; --text: #e2e8f0; --sub: #7b8ba5;
+    --dim: #3b4a66; --input: #1a2744; --input-border: #263554;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 1220px; margin: 0 auto; padding: 28px 20px; }
+
+  /* ── Header ── */
+  .header { margin-bottom: 28px; display: flex; align-items: center; gap: 14px; }
+  .header-icon {
+    width: 38px; height: 38px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; font-size: 19px;
+    background: linear-gradient(135deg, var(--accent), var(--green));
+  }
+  .header h1 { font-size: 22px; font-weight: 700; color: #fff; }
+  .header p { font-size: 13px; color: var(--sub); margin-top: 2px; }
+
+  /* ── Grid ── */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; gap: 18px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px;
+  }
+  .card h2 {
+    font-size: 14px; font-weight: 600; color: #fff;
+    letter-spacing: .02em; margin-bottom: 16px;
+  }
+  .card h3 {
+    font-size: 13px; color: var(--sub); font-weight: 500; margin-bottom: 10px;
+  }
+  .card h3 strong { color: var(--accent); }
+  .card h3 strong.g { color: var(--green); }
+
+  /* ── Form elements ── */
+  label.lbl {
+    font-size: 11px; color: var(--sub); display: block;
+    margin-bottom: 4px; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .inp {
+    background: var(--input); border: 1px solid var(--input-border);
+    border-radius: 10px; padding: 8px 12px; color: var(--text);
+    font-size: 14px; outline: none; width: 100%; font-family: inherit;
+  }
+  .inp:focus { border-color: var(--accent); }
+  .inp-big { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-align: center; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .mt { margin-top: 14px; }
+  .mt2 { margin-top: 16px; }
+
+  /* ── Slider ── */
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-val {
+    font-family: 'JetBrains Mono', monospace; font-size: 18px;
+    font-weight: 700; color: var(--accent); min-width: 36px; text-align: center;
+  }
+  .hint { font-size: 11px; color: var(--dim); margin-top: 4px; }
+
+  /* ── Understanding buttons ── */
+  .und-row { display: flex; gap: 6px; }
+  .und-btn {
+    flex: 1; padding: 9px 0; border-radius: 9px; font-size: 13px;
+    font-weight: 600; border: 1px solid var(--input-border);
+    background: var(--input); color: var(--sub);
+    cursor: pointer; transition: all .15s; font-family: inherit;
+  }
+  .und-btn.active {
+    border: 2px solid var(--accent);
+    background: rgba(56,189,248,.12); color: var(--accent);
+  }
+  .und-info { font-size: 11px; color: var(--dim); margin-top: 6px; }
+  .und-eff { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .und-eff strong { color: var(--text); }
+
+  /* ── Throughput chips ── */
+  .tp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .tp-header span { font-size: 12px; color: var(--sub); font-family: 'JetBrains Mono', monospace; }
+  .tp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tp-chip { position: relative; }
+  .tp-chip .s-label {
+    font-size: 9px; color: var(--dim); position: absolute;
+    top: -13px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  }
+  .tp-chip input {
+    width: 44px; height: 40px; text-align: center; border-radius: 8px;
+    font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    border: 1px solid var(--input-border); background: var(--input);
+    color: var(--text); outline: none;
+  }
+  .tp-chip input:focus { border-color: var(--accent); }
+  .tp-chip.dim input { opacity: .35; background: var(--bg); border-color: var(--border); color: var(--dim); }
+  .tp-x {
+    position: absolute; top: -6px; right: -6px; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--red); color: #fff; font-size: 10px;
+    border: none; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; opacity: .7; line-height: 1;
+  }
+  .tp-x:hover { opacity: 1; }
+  .tp-add-row { display: flex; gap: 10px; align-items: flex-end; }
+  .tp-add-row > div { flex: 1; }
+  .tp-add-inner { display: flex; gap: 6px; }
+  .tp-add-inner input { width: 60px; text-align: center; font-family: 'JetBrains Mono', monospace; }
+  .btn-add {
+    background: linear-gradient(135deg, var(--accent), #2dd4bf);
+    border: none; border-radius: 10px; padding: 8px 16px;
+    color: #0c1222; font-weight: 700; font-size: 14px; cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-add:hover { filter: brightness(1.1); }
+
+  /* ── Result rows ── */
+  .rrow {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 10px; border-radius: 8px;
+  }
+  .rrow.hl { background: rgba(52,211,153,.08); }
+  .rrow .rl { font-size: 12px; color: var(--sub); }
+  .rrow.hl .rl { color: var(--green); font-weight: 600; }
+  .rrow .rv { font-size: 13px; font-weight: 500; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+  .rrow.hl .rv { color: var(--green); font-weight: 700; }
+  .card-foot {
+    font-size: 11px; color: var(--dim); margin-top: 8px;
+    border-top: 1px solid var(--border); padding-top: 8px;
+  }
+
+  /* ── Q3 boxes ── */
+  .q3-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .q3-head input { width: auto; font-size: 13px; padding: 6px 10px; }
+  .q3-box { border-radius: 10px; padding: 14px; text-align: center; }
+  .q3-box.amber { background: rgba(251,191,36,.08); }
+  .q3-box.green { background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.2); }
+  .q3-box.blue  { background: rgba(56,189,248,.08); }
+  .q3-num { font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin: 0; }
+  .q3-num.amber { color: var(--amber); }
+  .q3-num.green { color: var(--green); }
+  .q3-num.blue  { color: var(--accent); }
+  .q3-sub { font-size: 10px; color: var(--sub); margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+  .q3-note { font-size: 11px; color: var(--dim); margin-top: 10px; }
+
+  /* ── Histogram ── */
+  .hist-canvas { width: 100%; height: 180px; display: block; }
+  .legend { display: flex; justify-content: center; gap: 18px; margin-top: 10px; }
+  .legend span { font-size: 10px; color: var(--sub); display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  .footer { text-align: center; font-size: 10px; color: var(--dim); margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🎲</div>
+    <div>
+      <h1>Monte Carlo Forecast</h1>
+      <p>Prognozowanie dostarczania backlogu · 10 000 symulacji · sprinty 2-tygodniowe</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- ═══ LEFT ═══ -->
+    <div class="col">
+      <!-- Params -->
+      <div class="card">
+        <h2>⚙️ Parametry projektu</h2>
+        <div class="row2">
+          <div>
+            <label class="lbl">Elementy backlogu</label>
+            <input id="backlog" type="number" class="inp inp-big" value="62" min="1">
+          </div>
+          <div>
+            <label class="lbl">Start prac</label>
+            <input id="startDate" type="date" class="inp" value="2026-06-01">
+          </div>
+        </div>
+        <div class="mt">
+          <label class="lbl">Dostępność zespołu (dni robocze / sprint)</label>
+          <div class="slider-row">
+            <input id="capacity" type="range" min="1" max="10" value="10">
+            <span id="capVal" class="slider-val">10</span>
+          </div>
+          <p id="capHint" class="hint">Pełna dostępność</p>
+        </div>
+        <div class="mt2">
+          <label class="lbl">Zrozumienie wymagań</label>
+          <div class="und-row" id="undRow"></div>
+          <p id="undInfo" class="und-info"></p>
+          <p id="undEff" class="und-eff"></p>
+        </div>
+      </div>
+
+      <!-- Throughput -->
+      <div class="card">
+        <div class="tp-header">
+          <h2 style="margin:0">📊 Przepustowość historyczna</h2>
+          <span id="tpAvg">μ = 0 / sprint</span>
+        </div>
+        <div id="tpChips" class="tp-chips"></div>
+        <div class="tp-add-row">
+          <div>
+            <label class="lbl">Dodaj sprint</label>
+            <div class="tp-add-inner">
+              <input id="newTp" type="number" class="inp" placeholder="—" min="0">
+              <button class="btn-add" id="addBtn">+</button>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">Sprintów w próbie</label>
+            <input id="sprintsUsed" type="number" class="inp" style="font-family:'JetBrains Mono',monospace;text-align:center" min="1">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ RIGHT ═══ -->
+    <div class="col" id="results"></div>
+  </div>
+
+  <p class="footer">Symulacja Monte Carlo · 10 000 iteracji · losowe próbkowanie z historycznej przepustowości · sprinty 2-tygodniowe</p>
+</div>
+
+<script>
+const SIMS = 10000, SP_DAYS = 14, FULL_CAP = 10;
+
+// ── State ──
+let state = {
+  backlog: 62,
+  startDate: '2026-06-01',
+  targetDate: '2026-09-30',
+  tp: [5,4,4,5,6,4,2,3,2,5,6],
+  sprintsUsed: 11,
+  understanding: 75,
+  capacity: 10,
+};
+
+const undLabels = {
+  100: 'Wymagania w pełni zrozumiane — backlog bez zmian',
+  75:  'Mała niepewność — backlog może wzrosnąć do ~50%',
+  50:  'Umiarkowana niepewność — backlog może się podwoić',
+  25:  'Duża niepewność — backlog może wzrosnąć ~2.5×',
+  0:   'Pełna niepewność — backlog może wzrosnąć ~3×',
+};
+
+// ── DOM refs ──
+const $ = id => document.getElementById(id);
+
+// ── Understanding buttons ──
+function renderUndButtons() {
+  const row = $('undRow');
+  row.innerHTML = '';
+  [0,25,50,75,100].forEach(v => {
+    const btn = document.createElement('button');
+    btn.className = 'und-btn' + (state.understanding === v ? ' active' : '');
+    btn.textContent = v + '%';
+    btn.onclick = () => { state.understanding = v; renderUndButtons(); run(); };
+    row.appendChild(btn);
+  });
+  $('undInfo').textContent = undLabels[state.understanding];
+  const uncMax = (100 - state.understanding) / 50;
+  const lo = state.backlog, hi = Math.ceil(state.backlog * (1 + uncMax));
+  $('undEff').innerHTML = 'Efektywny backlog: <strong>' +
+    (state.understanding === 100 ? lo : lo + '–' + hi) + '</strong> elementów';
+}
+
+// ── Throughput chips ──
+function renderTpChips() {
+  const c = $('tpChips');
+  c.innerHTML = '';
+  const activeStart = state.tp.length - Math.min(state.sprintsUsed, state.tp.length);
+  state.tp.forEach((v, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'tp-chip' + (i < activeStart ? ' dim' : '');
+    chip.innerHTML =
+      `<span class="s-label">S${i+1}</span>` +
+      `<input type="number" value="${v}" min="0">`;
+    if (state.tp.length > 1) {
+      chip.innerHTML += `<button class="tp-x" data-i="${i}">×</button>`;
+    }
+    chip.querySelector('input').addEventListener('change', e => {
+      state.tp[i] = Math.max(0, +e.target.value || 0);
+      run();
+    });
+    const xBtn = chip.querySelector('.tp-x');
+    if (xBtn) xBtn.addEventListener('click', () => {
+      state.tp.splice(i, 1);
+      state.sprintsUsed = Math.min(state.sprintsUsed, state.tp.length);
+      $('sprintsUsed').value = state.sprintsUsed;
+      renderTpChips(); run();
+    });
+    c.appendChild(chip);
+  });
+
+  const active = state.tp.slice(-Math.min(state.sprintsUsed, state.tp.length));
+  const avg = active.length ? (active.reduce((a,b) => a+b, 0) / active.length).toFixed(1) : '0';
+  $('tpAvg').textContent = 'μ = ' + avg + ' / sprint';
+}
+
+// ── Date helper ──
+function toDateStr(sprints) {
+  const d = new Date(state.startDate + 'T00:00:00');
+  d.setDate(d.getDate() + sprints * SP_DAYS);
+  return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// ── Monte Carlo ──
+function simulate() {
+  const active = state.tp.slice(-Math.min(state.sprintsUsed, state.tp.length));
+  if (!active.length || state.backlog <= 0) return null;
+
+  const capF = state.capacity / FULL_CAP;
+  const uncMax = (100 - state.understanding) / 50;
+  const start = new Date(state.startDate + 'T00:00:00');
+  const target = new Date(state.targetDate + 'T00:00:00');
+  const availSp = Math.max(0, Math.floor((target - start) / (1000*60*60*24*SP_DAYS)));
+
+  const r85 = [], r100 = [], rBy = [];
+
+  for (let i = 0; i < SIMS; i++) {
+    const mult = 1 + Math.random() * uncMax;
+    const adj = Math.ceil(state.backlog * mult);
+    const t85 = Math.ceil(adj * 0.85);
+    let done = 0, sp = 0, got85 = null;
+    while (done < adj && sp < 300) {
+      const tp = Math.max(1, Math.round(active[Math.floor(Math.random() * active.length)] * capF));
+      done += tp; sp++;
+      if (got85 === null && done >= t85) got85 = sp;
+    }
+    r85.push(got85 ?? sp);
+    r100.push(sp);
+
+    let total = 0;
+    for (let s = 0; s < availSp; s++) {
+      total += Math.max(1, Math.round(active[Math.floor(Math.random() * active.length)] * capF));
+    }
+    rBy.push(total);
+  }
+
+  r85.sort((a,b) => a-b);
+  r100.sort((a,b) => a-b);
+  rBy.sort((a,b) => a-b);
+
+  const pct = (a, p) => a[Math.min(Math.floor(p * a.length), a.length - 1)];
+
+  return {
+    c85:  { p50: pct(r85,.5),  p85: pct(r85,.85),  p95: pct(r85,.95) },
+    c100: { p50: pct(r100,.5), p85: pct(r100,.85), p95: pct(r100,.95) },
+    byDate: { p50: pct(rBy,.5), p85: pct(rBy,.85), availSp },
+    raw100: r100,
+  };
+}
+
+// ── Render results ──
+function renderResults(sim) {
+  const el = $('results');
+  if (!sim) { el.innerHTML = ''; return; }
+
+  const t85items = Math.ceil(state.backlog * 0.85);
+
+  el.innerHTML = `
+    <!-- Q1 -->
+    <div class="card">
+      <h3>① Kiedy ukończymy <strong>85%</strong> backlogu (${t85items} elem.)?</h3>
+      <div class="rrow"><span class="rl">50% pewności</span><span class="rv">${toDateStr(sim.c85.p50)}</span></div>
+      <div class="rrow hl"><span class="rl">85% pewności</span><span class="rv">${toDateStr(sim.c85.p85)}</span></div>
+      <div class="rrow"><span class="rl">95% pewności</span><span class="rv">${toDateStr(sim.c85.p95)}</span></div>
+      <p class="card-foot">P85 → ${sim.c85.p85} ${sim.c85.p85 === 1 ? 'sprint' : 'sprintów'} od startu</p>
+    </div>
+    <!-- Q2 -->
+    <div class="card">
+      <h3>② Kiedy ukończymy <strong class="g">100%</strong> backlogu (${state.backlog} elem.)?</h3>
+      <div class="rrow"><span class="rl">50% pewności</span><span class="rv">${toDateStr(sim.c100.p50)}</span></div>
+      <div class="rrow hl"><span class="rl">85% pewności</span><span class="rv">${toDateStr(sim.c100.p85)}</span></div>
+      <div class="rrow"><span class="rl">95% pewności</span><span class="rv">${toDateStr(sim.c100.p95)}</span></div>
+      <p class="card-foot">P85 → ${sim.c100.p85} ${sim.c100.p85 === 1 ? 'sprint' : 'sprintów'} od startu</p>
+    </div>
+    <!-- Q3 -->
+    <div class="card">
+      <div class="q3-head">
+        <h3 style="margin:0">③ Ile zrealizujemy do daty docelowej?</h3>
+        <input id="targetDateInput" type="date" class="inp" value="${state.targetDate}" style="width:auto;font-size:13px;padding:6px 10px">
+      </div>
+      <div class="row3">
+        <div class="q3-box amber">
+          <p class="q3-num amber">${sim.byDate.p50}</p>
+          <p class="q3-sub">optymistycznie (P50)</p>
+        </div>
+        <div class="q3-box green">
+          <p class="q3-num green">${sim.byDate.p85}</p>
+          <p class="q3-sub" style="color:var(--green);opacity:.7">realistycznie (P85)</p>
+        </div>
+        <div class="q3-box blue">
+          <p class="q3-num blue">${sim.byDate.availSp}</p>
+          <p class="q3-sub">sprintów do daty</p>
+        </div>
+      </div>
+      <p class="q3-note">${
+        sim.byDate.p85 >= state.backlog
+          ? `✅ Cały backlog (${state.backlog}) powinien być ukończony przed datą docelową (P85)`
+          : `⚠️ Przy 85% pewności dostarczymy ${sim.byDate.p85} z ${state.backlog} elementów — brakuje ${state.backlog - sim.byDate.p85}`
+      }</p>
+    </div>
+    <!-- Histogram -->
+    <div class="card">
+      <h3 style="margin-bottom:12px">Rozkład symulacji — ukończenie 100% backlogu (sprinty)</h3>
+      <canvas id="histCanvas" class="hist-canvas"></canvas>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:var(--green)"></span> P50 (${sim.c100.p50} sp.)</span>
+        <span><span class="legend-dot" style="background:var(--accent)"></span> P85 (${sim.c100.p85} sp.)</span>
+        <span><span class="legend-dot" style="background:var(--amber)"></span> P95 (${sim.c100.p95} sp.)</span>
+      </div>
+    </div>
+  `;
+
+  // Re-bind target date
+  $('targetDateInput').addEventListener('change', e => {
+    state.targetDate = e.target.value;
+    run();
+  });
+
+  // Draw histogram
+  drawHistogram(sim);
+}
+
+// ── Canvas histogram ──
+function drawHistogram(sim) {
+  const canvas = $('histCanvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  // Build bins
+  const counts = {};
+  sim.raw100.forEach(s => counts[s] = (counts[s] || 0) + 1);
+  const bins = Object.entries(counts).map(([s, c]) => ({ sprint: +s, count: c })).sort((a,b) => a.sprint - b.sprint);
+  if (!bins.length) return;
+
+  const maxCount = Math.max(...bins.map(b => b.count));
+  const minSp = bins[0].sprint, maxSp = bins[bins.length - 1].sprint;
+  const range = maxSp - minSp + 1;
+
+  const padL = 8, padR = 8, padT = 10, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const barW = Math.max(2, Math.min(24, (plotW / range) - 1));
+  const gap = (plotW - barW * range) / range;
+
+  const { p50, p85, p95 } = sim.c100;
+
+  const clr = (sp) =>
+    sp <= p50 ? '#34d399' : sp <= p85 ? '#38bdf8' : sp <= p95 ? '#fbbf24' : '#f87171';
+
+  bins.forEach(b => {
+    const idx = b.sprint - minSp;
+    const x = padL + idx * (barW + gap) + gap / 2;
+    const h = (b.count / maxCount) * plotH;
+    const y = padT + plotH - h;
+
+    ctx.fillStyle = clr(b.sprint);
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    const r = Math.min(3, barW / 2);
+    ctx.moveTo(x, y + r);
+    ctx.arcTo(x, y, x + barW, y, r);
+    ctx.arcTo(x + barW, y, x + barW, y + h, r);
+    ctx.lineTo(x + barW, padT + plotH);
+    ctx.lineTo(x, padT + plotH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Reference lines
+  const drawRef = (sp, color) => {
+    const idx = sp - minSp;
+    const x = padL + idx * (barW + gap) + gap / 2 + barW / 2;
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT + plotH); ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  drawRef(p50, '#34d399');
+  drawRef(p85, '#38bdf8');
+  drawRef(p95, '#fbbf24');
+
+  // X-axis labels (sparse)
+  ctx.fillStyle = '#7b8ba5'; ctx.font = '10px "DM Sans", sans-serif'; ctx.textAlign = 'center';
+  const step = Math.max(1, Math.floor(range / 12));
+  bins.forEach(b => {
+    if ((b.sprint - minSp) % step === 0 || b.sprint === p50 || b.sprint === p85 || b.sprint === p95) {
+      const idx = b.sprint - minSp;
+      const x = padL + idx * (barW + gap) + gap / 2 + barW / 2;
+      ctx.fillText(b.sprint, x, H - 6);
+    }
+  });
+}
+
+// ── Main run ──
+function run() {
+  renderUndButtons();
+  renderTpChips();
+  const sim = simulate();
+  renderResults(sim);
+}
+
+// ── Bind inputs ──
+$('backlog').addEventListener('input', e => { state.backlog = Math.max(1, +e.target.value || 1); run(); });
+$('startDate').addEventListener('change', e => { state.startDate = e.target.value; run(); });
+$('capacity').addEventListener('input', e => {
+  state.capacity = +e.target.value;
+  $('capVal').textContent = state.capacity;
+  $('capHint').textContent = state.capacity === 10 ? 'Pełna dostępność' :
+    Math.round(state.capacity / 10 * 100) + '% dostępności — np. urlopy, inne projekty';
+  run();
+});
+$('sprintsUsed').addEventListener('input', e => {
+  state.sprintsUsed = Math.max(1, Math.min(state.tp.length, +e.target.value || 1));
+  renderTpChips(); run();
+});
+$('addBtn').addEventListener('click', () => {
+  const v = parseInt($('newTp').value);
+  if (!isNaN(v) && v >= 0) {
+    state.tp.push(v);
+    state.sprintsUsed++;
+    $('sprintsUsed').max = state.tp.length;
+    $('sprintsUsed').value = state.sprintsUsed;
+    $('newTp').value = '';
+    renderTpChips(); run();
+  }
+});
+$('newTp').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click(); });
+
+window.addEventListener('resize', () => { const sim = simulate(); if (sim) drawHistogram(sim); });
+
+// ── Init ──
+$('sprintsUsed').value = state.sprintsUsed;
+$('sprintsUsed').max = state.tp.length;
+run();
+</script>
+</body>
+</html>
