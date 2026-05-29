@@ -436,6 +436,24 @@
     }
 
     canvas.xmr-canvas { display: block; width: 100%; }
+
+    /* ── SIGNAL BUTTONS ──────────────────── */
+    .sig-btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 5px 13px;
+      border-radius: 999px;
+      border: 2px solid var(--sc);
+      background: transparent;
+      color: var(--sc);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, opacity 0.15s;
+      white-space: nowrap;
+    }
+    .sig-btn.active  { background: var(--sc); color: white; }
+    .sig-btn:not(.active) { opacity: 0.45; }
+    .sig-btn:hover { opacity: 1; }
   </style>
 </head>
 <body>
@@ -587,9 +605,18 @@
       <div class="xs-val" id="xmrw-unpl">—</div>
     </div>
     <div class="xmr-stat lnpl">
-      <div class="xs-label">LNPL (−2,66 × mR̃)</div>
+      <div class="xs-label">LNPL (max 0, −2,66 × mR̃)</div>
       <div class="xs-val" id="xmrw-lnpl">—</div>
     </div>
+  </div>
+
+  <!-- Signal rule buttons -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);letter-spacing:0.06em;text-transform:uppercase;margin-right:4px;">Zasady sygnałów:</span>
+    <button class="sig-btn active" id="sigbtn-s1"   data-sig="s1"   onclick="toggleSig('s1')"   style="--sc:#dc2626">Sygnał</button>
+    <button class="sig-btn active" id="sigbtn-s2mod" data-sig="s2mod" onclick="toggleSig('s2mod')" style="--sc:#d97706">S Umiarkowany</button>
+    <button class="sig-btn active" id="sigbtn-s3per" data-sig="s3per" onclick="toggleSig('s3per')" style="--sc:#7c3aed">S Trwały</button>
+    <button class="sig-btn active" id="sigbtn-s4chg" data-sig="s4chg" onclick="toggleSig('s4chg')" style="--sc:#0891b2">Zmiana</button>
   </div>
 
   <!-- X chart weekly -->
@@ -601,7 +628,6 @@
         <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#6b7280;border-top:2px dashed #6b7280;background:none;width:24px;height:0;border-bottom:none;border-left:none;border-right:none"></div>Mediana</div>
         <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#dc2626"></div>UNPL</div>
         <div class="xmr-leg-item"><div class="xmr-leg-line" style="background:#2563eb"></div>LNPL</div>
-        <div class="xmr-leg-item"><div class="xmr-leg-dot" style="background:#dc262622;border-color:#dc2626"></div>Sygnał</div>
       </div>
     </div>
     <canvas id="xmrw-x-canvas" class="xmr-canvas"></canvas>
@@ -1159,7 +1185,7 @@ const XMR_AVG  = XMR_VALS.reduce((a,b) => a+b, 0) / XMR_N;
 const XMR_MRS  = [null, ...XMR_VALS.slice(1).map((v,i) => Math.abs(v - XMR_VALS[i]))];
 const XMR_AVGMR = XMR_MRS.slice(1).reduce((a,b) => a+b, 0) / (XMR_N - 1);
 const XMR_UNPL  = XMR_AVG + 2.66 * XMR_AVGMR;
-const XMR_LNPL  = XMR_AVG - 2.66 * XMR_AVGMR;
+const XMR_LNPL  = Math.max(0, XMR_AVG - 2.66 * XMR_AVGMR);
 const XMR_MRUCL = 3.267 * XMR_AVGMR;
 
 // Populate KPI cards
@@ -1247,7 +1273,7 @@ function drawXmrBase(c, ctx, yMin, yMax) {
 
 function drawXChart() {
   const yPad  = Math.max(1, XMR_UNPL * 0.08);
-  const yMin  = Math.min(0, XMR_LNPL - yPad);
+  const yMin  = 0;
   const yMax  = XMR_UNPL + yPad;
   const { W, H, xS, yS } = drawXmrBase(xCvs, xCtx, yMin, yMax);
 
@@ -1396,13 +1422,92 @@ const XMRW_MRS   = [null, ...XMRW_VALS.slice(1).map((v,i)=>Math.abs(v-XMRW_VALS[
 const XMRW_MED   = medianOf(XMRW_VALS);
 const XMRW_MEDMR = medianOf(XMRW_MRS.slice(1));
 const XMRW_UNPL  = XMRW_MED  + 2.66 * XMRW_MEDMR;
-const XMRW_LNPL  = XMRW_MED  - 2.66 * XMRW_MEDMR;
+const XMRW_LNPL  = Math.max(0, XMRW_MED - 2.66 * XMRW_MEDMR);
 const XMRW_MRUCL = 3.267 * XMRW_MEDMR;
+// sigma zones (1σ = ±0.889×mR̄, 2σ = ±1.773×mR̄ — i.e. 1/3 and 2/3 of 2.66)
+const XMRW_S1U   = XMRW_MED + (2.66/3) * XMRW_MEDMR;
+const XMRW_S1L   = Math.max(0, XMRW_MED - (2.66/3) * XMRW_MEDMR);
+const XMRW_S2U   = XMRW_MED + (2.66*2/3) * XMRW_MEDMR;
+const XMRW_S2L   = Math.max(0, XMRW_MED - (2.66*2/3) * XMRW_MEDMR);
 
 document.getElementById('xmrw-med').textContent   = XMRW_MED.toFixed(2);
 document.getElementById('xmrw-medmr').textContent = XMRW_MEDMR.toFixed(2);
 document.getElementById('xmrw-unpl').textContent  = XMRW_UNPL.toFixed(2);
 document.getElementById('xmrw-lnpl').textContent  = XMRW_LNPL.toFixed(2);
+
+// ── SIGNAL DETECTION ─────────────────────────────────────────────────────
+// Returns Set of flagged indices per rule, for an X-chart series
+function detectSignals(vals, center, unpl, lnpl, s1u, s1l, s2u, s2l) {
+  const n = vals.length;
+
+  // Rule 1: single point beyond NPL
+  const r1 = new Set();
+  vals.forEach((v,i) => { if (v > unpl || v < lnpl) r1.add(i); });
+
+  // Rule 2: 2 of 3 consecutive beyond 2σ on same side
+  const r2 = new Set();
+  for (let i = 0; i <= n-3; i++) {
+    const win = [vals[i], vals[i+1], vals[i+2]];
+    const aboveCount = win.filter(v => v > s2u).length;
+    const belowCount = win.filter(v => v < s2l).length;
+    if (aboveCount >= 2 || belowCount >= 2) {
+      win.forEach((v,j) => {
+        if (v > s2u || v < s2l) r2.add(i+j);
+      });
+    }
+  }
+
+  // Rule 3: 3 of 5 consecutive beyond 1σ on same side
+  const r3 = new Set();
+  for (let i = 0; i <= n-5; i++) {
+    const win = [vals[i],vals[i+1],vals[i+2],vals[i+3],vals[i+4]];
+    const aboveCount = win.filter(v => v > s1u).length;
+    const belowCount = win.filter(v => v < s1l).length;
+    if (aboveCount >= 3 || belowCount >= 3) {
+      win.forEach((v,j) => {
+        if (v > s1u || v < s1l) r3.add(i+j);
+      });
+    }
+  }
+
+  // Rule 4: 8 consecutive on same side of center
+  const r4 = new Set();
+  for (let i = 0; i <= n-8; i++) {
+    const win = vals.slice(i, i+8);
+    if (win.every(v => v > center) || win.every(v => v < center)) {
+      for (let j = i; j < i+8; j++) r4.add(j);
+    }
+  }
+
+  return { r1, r2, r3, r4 };
+}
+
+// ── SIGNAL STATE ──────────────────────────────────────────────────────────
+const sigActive = { s1: true, s2mod: true, s3per: true, s4chg: true };
+const SIG_COLORS = {
+  s1:    '#dc2626',
+  s2mod: '#d97706',
+  s3per: '#7c3aed',
+  s4chg: '#0891b2'
+};
+
+function toggleSig(key) {
+  sigActive[key] = !sigActive[key];
+  const btn = document.getElementById('sigbtn-' + key);
+  btn.classList.toggle('active', sigActive[key]);
+  // Ensure XmR tab is active and canvases are sized before drawing
+  const xmrTab = document.getElementById('tab-xmr');
+  if (!xmrTab.classList.contains('active')) {
+    switchTab('xmr');
+    return; // switchTab triggers xmrwResize which draws
+  }
+  if (!parseFloat(xwCvs.style.width)) {
+    xmrwResize();
+  } else {
+    drawXwChart();
+    drawMRwChart();
+  }
+}
 
 // ── XMR WEEKLY CANVASES ───────────────────────────────────────────────────
 const xwCvs  = document.getElementById('xmrw-x-canvas');
@@ -1414,7 +1519,7 @@ function xmrwResize() {
   [xwCvs, mrwCvs].forEach((c, ci) => {
     const dpr = window.devicePixelRatio || 1;
     const w = c.parentElement.getBoundingClientRect().width - 44;
-    const h = ci === 0 ? Math.max(200, Math.min(300, w * 0.32)) : Math.max(140, Math.min(200, w * 0.22));
+    const h = ci === 0 ? Math.max(220, Math.min(320, w * 0.34)) : Math.max(160, Math.min(220, w * 0.24));
     c.style.width  = w + 'px'; c.style.height = h + 'px';
     c.width = w * dpr;        c.height = h * dpr;
     c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1424,13 +1529,10 @@ function xmrwResize() {
 }
 
 function fmtWeek(iso) {
-  // e.g. "6 sty – 12 sty"
   const d0 = new Date(iso + 'T00:00:00');
-  const d1 = new Date(d0); d1.setDate(d1.getDate() + 4); // +4 = Friday
   return `${d0.getDate()} ${MONTHS_SHORT[d0.getMonth()]}`;
 }
 
-// Re-use drawXmrBase but parameterised for weekly (n points, own labels)
 function drawXmrBaseW(c, ctx, vals, dates, yMin, yMax) {
   const W  = parseFloat(c.style.width);
   const H  = parseFloat(c.style.height);
@@ -1439,10 +1541,9 @@ function drawXmrBaseW(c, ctx, vals, dates, yMin, yMax) {
   ctx.clearRect(0, 0, W, H);
 
   const n  = vals.length;
-  const xS = i => XPAD.left + (i / (n - 1)) * CW;
+  const xS = i => XPAD.left + (i / Math.max(n-1,1)) * CW;
   const yS = v => XPAD.top + CH - ((v - yMin) / (yMax - yMin)) * CH;
 
-  // Y grid
   const yRange = yMax - yMin || 1;
   const rawStep = yRange / 5;
   const mag  = Math.pow(10, Math.floor(Math.log10(rawStep)));
@@ -1455,7 +1556,6 @@ function drawXmrBaseW(c, ctx, vals, dates, yMin, yMax) {
     ctx.fillText(Number(v.toFixed(1)), XPAD.left - 5, y + 3.5);
   }
 
-  // X ticks — every point labelled with week start
   ctx.fillStyle = '#a0a0a0'; ctx.font = `500 9px 'DM Mono', monospace`; ctx.textAlign = 'center';
   dates.forEach((d, i) => {
     const x = xS(i);
@@ -1465,7 +1565,6 @@ function drawXmrBaseW(c, ctx, vals, dates, yMin, yMax) {
     ctx.fillText(fmtWeek(d), x, H - XPAD.bottom + 13);
   });
 
-  // Axes
   ctx.strokeStyle = '#c8c3bc'; ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(XPAD.left, XPAD.top); ctx.lineTo(XPAD.left, H - XPAD.bottom); ctx.lineTo(W - XPAD.right, H - XPAD.bottom);
@@ -1474,14 +1573,52 @@ function drawXmrBaseW(c, ctx, vals, dates, yMin, yMax) {
   return { W, H, CW, CH, xS, yS };
 }
 
-function drawXwChart() {
-  const yPad = Math.max(1, XMRW_UNPL * 0.1);
-  const yMin = Math.min(0, XMRW_LNPL - yPad);
-  const yMax = XMRW_UNPL + yPad;
-  const { W, xS, yS } = drawXmrBaseW(xwCvs, xwCtx, XMRW_VALS, XMRW_DATES, yMin, yMax);
+// Draw a highlight smear under a group of consecutive flagged indices
+function drawSmear(ctx, indices, xS, yS, vals, color, H) {
+  if (!indices.length) return;
+  // group into consecutive runs
+  const runs = [];
+  let run = [indices[0]];
+  for (let k = 1; k < indices.length; k++) {
+    if (indices[k] === indices[k-1]+1) { run.push(indices[k]); }
+    else { runs.push(run); run = [indices[k]]; }
+  }
+  runs.push(run);
 
-  // LNPL
-  if (XMRW_LNPL > yMin) {
+  runs.forEach(r => {
+    if (r.length < 2) return; // single points get only dot highlight
+    const x0 = xS(r[0]), x1 = xS(r[r.length-1]);
+    const ys = r.map(i => yS(vals[i]));
+    const yTop = Math.min(...ys) - 12, yBot = Math.max(...ys) + 12;
+    ctx.globalAlpha = 0.10;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x0-8, yTop, x1-x0+16, yBot-yTop, 6)
+                  : ctx.rect(x0-8, yTop, x1-x0+16, yBot-yTop);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawXwChart() {
+  const yMin = 0;
+  const yMax = Math.max(XMRW_UNPL, Math.max(...XMRW_VALS)) * 1.1;
+  const { W, H, xS, yS } = drawXmrBaseW(xwCvs, xwCtx, XMRW_VALS, XMRW_DATES, yMin, yMax);
+
+  // Sigma zone fills (light)
+  [[XMRW_S1L, XMRW_S1U, 'rgba(107,114,128,0.04)'],
+   [XMRW_S2L, XMRW_S2U, 'rgba(107,114,128,0.04)']].forEach(([lo, hi, col]) => {
+    xwCtx.fillStyle = col;
+    xwCtx.fillRect(XPAD.left, yS(hi), W - XPAD.left - XPAD.right, yS(Math.max(lo,yMin)) - yS(hi));
+  });
+
+  // NPL corridor fill
+  xwCtx.globalAlpha = 0.04; xwCtx.fillStyle = '#6b7280';
+  xwCtx.fillRect(XPAD.left, yS(XMRW_UNPL), W - XPAD.left - XPAD.right, yS(XMRW_LNPL) - yS(XMRW_UNPL));
+  xwCtx.globalAlpha = 1;
+
+  // LNPL (only if > 0)
+  if (XMRW_LNPL > 0) {
     xwCtx.strokeStyle = '#2563eb'; xwCtx.lineWidth = 1.5; xwCtx.setLineDash([]);
     xwCtx.beginPath(); xwCtx.moveTo(XPAD.left, yS(XMRW_LNPL)); xwCtx.lineTo(W - XPAD.right, yS(XMRW_LNPL)); xwCtx.stroke();
     xwCtx.fillStyle = '#2563eb'; xwCtx.font = `500 8.5px 'DM Mono', monospace`; xwCtx.textAlign = 'left';
@@ -1492,58 +1629,98 @@ function drawXwChart() {
   xwCtx.beginPath(); xwCtx.moveTo(XPAD.left, yS(XMRW_UNPL)); xwCtx.lineTo(W - XPAD.right, yS(XMRW_UNPL)); xwCtx.stroke();
   xwCtx.fillStyle = '#dc2626'; xwCtx.font = `500 8.5px 'DM Mono', monospace`; xwCtx.textAlign = 'left';
   xwCtx.fillText(`UNPL ${XMRW_UNPL.toFixed(2)}`, XPAD.left + 4, yS(XMRW_UNPL) - 4);
-  // Median (dashed)
+  // 1σ / 2σ dashed
+  [[XMRW_S2U,'#9ca3af','2σ+'],[XMRW_S2L,'#9ca3af','2σ−'],
+   [XMRW_S1U,'#d1d5db','1σ+'],[XMRW_S1L,'#d1d5db','1σ−']].forEach(([v, col, lbl]) => {
+    if (v <= 0) return;
+    xwCtx.strokeStyle = col; xwCtx.lineWidth = 1; xwCtx.setLineDash([4,4]);
+    xwCtx.beginPath(); xwCtx.moveTo(XPAD.left, yS(v)); xwCtx.lineTo(W - XPAD.right, yS(v)); xwCtx.stroke();
+    xwCtx.setLineDash([]);
+    xwCtx.fillStyle = col; xwCtx.font = `400 8px 'DM Mono', monospace`; xwCtx.textAlign = 'right';
+    xwCtx.fillText(lbl, W - XPAD.right - 2, yS(v) - 3);
+  });
+  // Median dashed
   xwCtx.strokeStyle = '#6b7280'; xwCtx.lineWidth = 1.5; xwCtx.setLineDash([6, 4]);
   xwCtx.beginPath(); xwCtx.moveTo(XPAD.left, yS(XMRW_MED)); xwCtx.lineTo(W - XPAD.right, yS(XMRW_MED)); xwCtx.stroke();
   xwCtx.setLineDash([]);
   xwCtx.fillStyle = '#6b7280'; xwCtx.font = `500 8.5px 'DM Mono', monospace`; xwCtx.textAlign = 'left';
   xwCtx.fillText(`x̃ ${XMRW_MED.toFixed(2)}`, XPAD.left + 4, yS(XMRW_MED) - 4);
-  // Fill band
-  xwCtx.globalAlpha = 0.04; xwCtx.fillStyle = '#6b7280';
-  const top = yS(XMRW_UNPL), bot = Math.min(yS(Math.max(XMRW_LNPL, 0)), parseFloat(xwCvs.style.height) - XPAD.bottom);
-  xwCtx.fillRect(XPAD.left, top, W - XPAD.left - XPAD.right, bot - top);
-  xwCtx.globalAlpha = 1;
+
+  // ── Detect signals ──
+  const sigs = detectSignals(XMRW_VALS, XMRW_MED, XMRW_UNPL, XMRW_LNPL, XMRW_S1U, XMRW_S1L, XMRW_S2U, XMRW_S2L);
+  const ruleMap = [
+    { key:'s4chg', set: sigs.r4 },
+    { key:'s3per', set: sigs.r3 },
+    { key:'s2mod', set: sigs.r2 },
+    { key:'s1',    set: sigs.r1 }
+  ];
+
+  // Draw smears first (under dots)
+  ruleMap.forEach(({key, set}) => {
+    if (!sigActive[key]) return;
+    const idxArr = [...set].sort((a,b)=>a-b);
+    drawSmear(xwCtx, idxArr, xS, yS, XMRW_VALS, SIG_COLORS[key], H);
+  });
+
   // Line
   xwCtx.strokeStyle = '#1a1816'; xwCtx.lineWidth = 1.5;
   xwCtx.beginPath();
   XMRW_VALS.forEach((v, i) => { i === 0 ? xwCtx.moveTo(xS(i), yS(v)) : xwCtx.lineTo(xS(i), yS(v)); });
   xwCtx.stroke();
-  // Dots
+
+  // Dots — determine highest-priority signal per point
   XMRW_VALS.forEach((v, i) => {
-    const sig = v > XMRW_UNPL || v < XMRW_LNPL;
-    xwCtx.beginPath(); xwCtx.arc(xS(i), yS(v), sig ? 5 : 3.5, 0, Math.PI*2);
-    xwCtx.fillStyle = sig ? 'rgba(220,38,38,0.15)' : '#ffffff'; xwCtx.fill();
-    xwCtx.strokeStyle = sig ? '#dc2626' : '#1a1816'; xwCtx.lineWidth = sig ? 2 : 1.5; xwCtx.stroke();
+    let dotColor = null;
+    // priority: r1 > r2 > r3 > r4
+    if (sigActive.s1    && sigs.r1.has(i)) dotColor = SIG_COLORS.s1;
+    else if (sigActive.s2mod && sigs.r2.has(i)) dotColor = SIG_COLORS.s2mod;
+    else if (sigActive.s3per && sigs.r3.has(i)) dotColor = SIG_COLORS.s3per;
+    else if (sigActive.s4chg && sigs.r4.has(i)) dotColor = SIG_COLORS.s4chg;
+
+    const r = dotColor ? 5.5 : 3.5;
+    xwCtx.beginPath(); xwCtx.arc(xS(i), yS(v), r, 0, Math.PI*2);
+    xwCtx.fillStyle = dotColor ? `${dotColor}22` : '#ffffff'; xwCtx.fill();
+    xwCtx.strokeStyle = dotColor || '#1a1816';
+    xwCtx.lineWidth = dotColor ? 2.5 : 1.5; xwCtx.stroke();
   });
 }
 
 function drawMRwChart() {
   const mrVals = XMRW_MRS.slice(1);
-  const yMax   = Math.max(XMRW_MRUCL, Math.max(...mrVals)) * 1.1;
-  const { W, xS, yS } = drawXmrBaseW(mrwCvs, mrwCtx, mrVals, XMRW_DATES.slice(1), 0, yMax);
+  // MR chart: only Rule 1 (beyond MR UCL) — others don't apply to mR chart
+  const mrUNPL = XMRW_MRUCL;
+  const yMax   = Math.max(mrUNPL, Math.max(...mrVals)) * 1.1;
+  const { W, H, xS, yS } = drawXmrBaseW(mrwCvs, mrwCtx, mrVals, XMRW_DATES.slice(1), 0, yMax);
 
   // UCL
   mrwCtx.strokeStyle = '#d97706'; mrwCtx.lineWidth = 1.5; mrwCtx.setLineDash([]);
-  mrwCtx.beginPath(); mrwCtx.moveTo(XPAD.left, yS(XMRW_MRUCL)); mrwCtx.lineTo(W - XPAD.right, yS(XMRW_MRUCL)); mrwCtx.stroke();
+  mrwCtx.beginPath(); mrwCtx.moveTo(XPAD.left, yS(mrUNPL)); mrwCtx.lineTo(W - XPAD.right, yS(mrUNPL)); mrwCtx.stroke();
   mrwCtx.fillStyle = '#d97706'; mrwCtx.font = `500 8.5px 'DM Mono', monospace`; mrwCtx.textAlign = 'left';
-  mrwCtx.fillText(`UCL ${XMRW_MRUCL.toFixed(2)}`, XPAD.left + 4, yS(XMRW_MRUCL) - 4);
+  mrwCtx.fillText(`UCL ${mrUNPL.toFixed(2)}`, XPAD.left + 4, yS(mrUNPL) - 4);
   // Median MR dashed
   mrwCtx.strokeStyle = '#6b7280'; mrwCtx.lineWidth = 1.5; mrwCtx.setLineDash([6, 4]);
   mrwCtx.beginPath(); mrwCtx.moveTo(XPAD.left, yS(XMRW_MEDMR)); mrwCtx.lineTo(W - XPAD.right, yS(XMRW_MEDMR)); mrwCtx.stroke();
   mrwCtx.setLineDash([]);
   mrwCtx.fillStyle = '#6b7280'; mrwCtx.font = `500 8.5px 'DM Mono', monospace`; mrwCtx.textAlign = 'left';
   mrwCtx.fillText(`mR̃ ${XMRW_MEDMR.toFixed(2)}`, XPAD.left + 4, yS(XMRW_MEDMR) - 4);
-  // Line (offset by 1 — no MR for first point)
+
+  // Signal on mR: points beyond UCL (Rule 1 only)
+  const mrSig = new Set(mrVals.map((v,i) => v > mrUNPL ? i : -1).filter(i => i >= 0));
+  if (sigActive.s1) drawSmear(mrwCtx, [...mrSig].sort((a,b)=>a-b), xS, yS, mrVals, SIG_COLORS.s1, H);
+
+  // Line
   mrwCtx.strokeStyle = '#7c3aed'; mrwCtx.lineWidth = 1.5;
   mrwCtx.beginPath();
   mrVals.forEach((v, i) => { i === 0 ? mrwCtx.moveTo(xS(i), yS(v)) : mrwCtx.lineTo(xS(i), yS(v)); });
   mrwCtx.stroke();
+
   // Dots
   mrVals.forEach((v, i) => {
-    const sig = v > XMRW_MRUCL;
-    mrwCtx.beginPath(); mrwCtx.arc(xS(i), yS(v), sig ? 5 : 3.5, 0, Math.PI*2);
-    mrwCtx.fillStyle = sig ? 'rgba(217,119,6,0.15)' : '#ffffff'; mrwCtx.fill();
-    mrwCtx.strokeStyle = sig ? '#d97706' : '#7c3aed'; mrwCtx.lineWidth = sig ? 2 : 1.5; mrwCtx.stroke();
+    const sig = sigActive.s1 && mrSig.has(i);
+    mrwCtx.beginPath(); mrwCtx.arc(xS(i), yS(v), sig ? 5.5 : 3.5, 0, Math.PI*2);
+    mrwCtx.fillStyle = sig ? `${SIG_COLORS.s1}22` : '#ffffff'; mrwCtx.fill();
+    mrwCtx.strokeStyle = sig ? SIG_COLORS.s1 : '#7c3aed';
+    mrwCtx.lineWidth = sig ? 2.5 : 1.5; mrwCtx.stroke();
   });
 }
 
@@ -1578,7 +1755,7 @@ function xmrwTooltip(canvas, vals, dates, isX) {
   canvas.addEventListener('mouseleave', () => xmrTip.classList.remove('visible'));
 }
 
-xmrwTooltip(xwCvs,  XMRW_VALS,          XMRW_DATES,       true);
+xmrwTooltip(xwCvs,  XMRW_VALS,          XMRW_DATES,          true);
 xmrwTooltip(mrwCvs, XMRW_MRS.slice(1),  XMRW_DATES.slice(1), false);
 
 window.addEventListener('resize', () => {
